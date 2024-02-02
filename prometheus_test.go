@@ -33,18 +33,26 @@ func Test_InstrumentGorillaMux(t *testing.T) {
 	ts := httptest.NewServer(r)
 	defer ts.Close()
 
-	req1, err := http.NewRequest("GET", ts.URL+"/?version=0.1", nil)
+	req1, err := http.NewRequest("GET", ts.URL+"/", nil)
 	if err != nil {
 		t.Error(err)
 	}
-	req2, err := http.NewRequest("GET", ts.URL+"/metrics", nil)
+
+	req2, err := http.NewRequest("GET", ts.URL+"/?version=0.1", nil)
+	if err != nil {
+		t.Error(err)
+	}
+
+	req3, err := http.NewRequest("GET", ts.URL+"/metrics", nil)
 	if err != nil {
 		t.Error(err)
 	}
 
 	r.ServeHTTP(recorder, req1)
 	r.ServeHTTP(recorder, req2)
+	r.ServeHTTP(recorder, req3)
 	body := recorder.Body.String()
+
 	if !strings.Contains(body, requestName) {
 		t.Errorf("body does not contain request total entry '%s'", requestName)
 	}
@@ -52,7 +60,11 @@ func Test_InstrumentGorillaMux(t *testing.T) {
 		t.Errorf("body does not contain request duration entry '%s'", requestName)
 	}
 
-    if !strings.Contains(body, `http_request_duration_seconds_count{method="get",path="/",status="200",version="0.1"}`) {
-        t.Errorf("body does not contain expected version value '%s'", `http_request_duration_seconds_count{method="get",path="/",status="200",version="0.1"}`)
-    }
+	if !strings.Contains(body, `http_request_duration_seconds_count{client_version="0.0.0",method="get",path="/",status="200"}`) {
+		t.Errorf("body does not contain expected client_version value '%s'", "0.0.0")
+	}
+
+	if !strings.Contains(body, `http_request_duration_seconds_count{client_version="0.1",method="get",path="/",status="200"}`) {
+		t.Errorf("body does not contain expected client_version value '%s'", "0.1")
+	}
 }
